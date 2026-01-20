@@ -87,10 +87,6 @@ curl -X POST http://localhost:8000/generate \
 sdxl_llm_server/webui.py
 
 ```sh
-python webui.py
-```
-
-```sh
 pip install gradio requests
 python webui.py
 ```
