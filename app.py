@@ -1,12 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
-from python_coreml_stable_diffusion.pipeline import StableDiffusionPipeline
+from python_coreml_stable_diffusion.pipeline import StableDiffusionXLPipeline
 from PIL import Image
 import uuid
 import os
-import torch
-from transformers import CLIPTextModel, CLIPTokenizer
 
 # ======================
 # CONFIG
@@ -21,14 +19,10 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # ======================
 # LOAD PIPELINE (ONCE)
 # ======================
-pipe = StableDiffusionPipeline.from_pretrained(
+pipe = StableDiffusionXLPipeline.from_pretrained(
     MODEL_DIR,  # Directly pass the model directory as an argument
     compute_unit=COMPUTE_UNIT
 )
-
-# Initialize the tokenizer and model for generating text embeddings
-tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-base-patch32")
-text_model = CLIPTextModel.from_pretrained("openai/clip-vit-base-patch32")
 
 app = FastAPI(title="SDXL CoreML M4 LLM 推理服务器")
 
@@ -40,28 +34,17 @@ class GenerateRequest(BaseModel):
 
 @app.post("/generate")
 def generate(req: GenerateRequest):
-    # Generate text embeddings using CLIP tokenizer and model
-    inputs = tokenizer(req.prompt, return_tensors="pt")
-    text_embeds = text_model(**inputs).last_hidden_state
-
-    # Initialize added_cond_kwargs with the required embeddings
-    added_cond_kwargs = {
-        "text_embeds": text_embeds
-    }
-
-    # Call the pipeline with additional parameters, including the added_cond_kwargs
-    image = pipe(
+    result = pipe(
         prompt=req.prompt,
         negative_prompt=req.negative_prompt,
         num_inference_steps=req.steps,
-        seed=req.seed,
-        added_cond_kwargs=added_cond_kwargs  # Ensure it's properly populated
+        seed=req.seed
     )
+
+    image = result.images[0]
 
     filename = f"{uuid.uuid4().hex}.png"
     path = os.path.join(OUTPUT_DIR, filename)
     image.save(path)
 
-    return {
-        "image_path": path
-    }
+    return {"image_path": path}
