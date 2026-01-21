@@ -1,20 +1,18 @@
 from fastapi import FastAPI
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional
 from python_coreml_stable_diffusion.pipeline import StableDiffusionXLPipeline
 from PIL import Image
 import uuid
-import os
+import io
 
 # ======================
 # CONFIG
 # ======================
 BASE_MODEL_DIR = "/Users/zhlsunshine/Projects/inference/models/stable-diffusion-xl-base-1.0"
 MODEL_DIR = "/Users/zhlsunshine/Projects/inference/models/sdxl-core-ml"
-OUTPUT_DIR = "outputs"
 COMPUTE_UNIT = "CPU_AND_NE"  # Best for M4
-
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ======================
 # LOAD PIPELINE (ONCE)
@@ -38,13 +36,14 @@ def generate(req: GenerateRequest):
         prompt=req.prompt,
         negative_prompt=req.negative_prompt,
         num_inference_steps=req.steps,
+        guidance_scale=7.5,
         seed=req.seed
     )
 
     image = result.images[0]
 
-    filename = f"{uuid.uuid4().hex}.png"
-    path = os.path.join(OUTPUT_DIR, filename)
-    image.save(path)
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    buf.seek(0)
 
-    return {"image_path": path}
+    return Response(content=buf.getvalue(), media_type="image/png")

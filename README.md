@@ -71,7 +71,7 @@ pip install diffusers transformers python_coreml_stable_diffusion fastapi uvicor
 sdxl_llm_server/app.py
 
 ```sh
-uvicorn app:app --host 0.0.0.0 --port 8000
+uvicorn app:app --host 127.0.0.1 --port 8000
 ```
 
 Valid the backend service:
